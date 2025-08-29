@@ -13,14 +13,19 @@
     main {padding:20px; max-width:900px; margin:auto;}
     .article {background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.1);}
     .article h2 {margin:0 0 10px;}
-    .meta {font-size:14px; color:#555; margin-bottom:10px;}
+    .meta {font-size:12px; color:#666; margin-bottom:10px;}
+    .article img {max-width:100%; border-radius:6px; margin:10px 0;}
+    #cabinet {display:none;}
     form {display:grid; gap:10px; margin-top:10px;}
     input, textarea {padding:10px; font-size:14px; border:1px solid #ccc; border-radius:6px;}
     button {padding:10px; border:none; border-radius:6px; background:#2b2d42; color:#fff; cursor:pointer;}
     button:hover {background:#3c3f60;}
-    #cabinet, #login {display:none;}
-    .delete-btn {background:#ef233c; margin-top:10px;}
-    .delete-btn:hover {background:#c1121f;}
+    .delete-btn {background:#d90429; margin-top:10px;}
+    .delete-btn:hover {background:#a3021f;}
+    .edit-btn {background:#f77f00; margin-left:10px;}
+    .edit-btn:hover {background:#c76500;}
+    .clear-btn {background:#ef233c; margin-top:15px;}
+    .clear-btn:hover {background:#a3021f;}
   </style>
 </head>
 <body>
@@ -34,157 +39,131 @@
 </header>
 
 <main>
-  <!-- Головна сторінка -->
+  <!-- Головна -->
   <section id="home">
     <h2>Останні статті</h2>
     <div id="articles"></div>
   </section>
 
-  <!-- Форма входу -->
-  <section id="login">
-    <h2>Вхід у кабінет</h2>
-    <form id="loginForm">
-      <input type="text" id="username" placeholder="Логін" required>
-      <input type="password" id="password" placeholder="Пароль" required>
-      <button type="submit">Увійти</button>
-    </form>
-    <p id="loginError" style="color:red; display:none;">Невірний логін або пароль</p>
-  </section>
-
   <!-- Кабінет -->
   <section id="cabinet">
-    <h2>Додати статтю</h2>
+    <h2 id="formTitle">Додати статтю</h2>
     <form id="articleForm">
       <input type="text" id="title" placeholder="Заголовок" required>
       <textarea id="content" placeholder="Текст статті" rows="6" required></textarea>
+      <input type="text" id="author" placeholder="Автор" required>
+      <input type="file" id="image" accept="image/*">
       <button type="submit">Опублікувати</button>
     </form>
-
-    <h2 style="margin-top:30px;">Мої статті</h2>
-    <div id="myArticles"></div>
-
-    <button onclick="logout()" style="margin-top:15px; background:#ef233c;">Вийти</button>
+    <button class="clear-btn" onclick="clearArticles()">Очистити всі статті</button>
   </section>
 </main>
 
 <script>
-  // "База" користувача
-  const USER = { login: "admin", pass: "1234" };
-
-  // Авторизація
-  function login(username, password) {
-    if (username === USER.login && password === USER.pass) {
-      localStorage.setItem("loggedIn", "true");
-      localStorage.setItem("currentUser", username);
-      showPage("cabinet");
-    } else {
-      document.getElementById("loginError").style.display = "block";
-    }
-  }
-
-  function logout() {
-    localStorage.removeItem("loggedIn");
-    localStorage.removeItem("currentUser");
-    showPage("home");
-  }
+  let editIndex = null;
 
   // Перемикання сторінок
   function showPage(page) {
     document.getElementById("home").style.display = (page === "home") ? "block" : "none";
-    document.getElementById("login").style.display = (page === "login") ? "block" : "none";
     document.getElementById("cabinet").style.display = (page === "cabinet") ? "block" : "none";
-
-    if (page === "cabinet") {
-      if (localStorage.getItem("loggedIn") === "true") {
-        document.getElementById("cabinet").style.display = "block";
-        loadMyArticles(); // показати статті в кабінеті
-      } else {
-        showPage("login");
-      }
-    }
-
-    if (page === "home") {
-      loadArticles(); // при відкритті головної підтягувати статті
-    }
   }
+  showPage("home");
 
-  // Завантаження статей з localStorage (головна)
+  // Завантаження статей
   function loadArticles() {
     let articles = JSON.parse(localStorage.getItem("articles")) || [];
     let container = document.getElementById("articles");
     container.innerHTML = "";
     if (articles.length === 0) {
-      container.innerHTML = "<p>Немає статей. Додайте першу через кабінет.</p>";
+      container.innerHTML = "<p>Статей ще немає. Додайте першу!</p>";
+      return;
     }
-    articles.forEach((a) => {
+    articles.forEach((a, i) => {
       let div = document.createElement("div");
       div.className = "article";
-      div.innerHTML = `<h2>${a.title}</h2>
-        <div class="meta">Автор: <b>${a.author}</b> | ${a.date}</div>
-        <p>${a.content}</p>`;
-      container.appendChild(div);
-    });
-  }
-
-  // Завантаження статей у кабінеті
-  function loadMyArticles() {
-    let currentUser = localStorage.getItem("currentUser");
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    let container = document.getElementById("myArticles");
-    container.innerHTML = "";
-
-    let myArticles = articles.filter(a => a.author === currentUser);
-    if (myArticles.length === 0) {
-      container.innerHTML = "<p>У вас немає статей.</p>";
-    }
-
-    myArticles.forEach((a, index) => {
-      let div = document.createElement("div");
-      div.className = "article";
-      div.innerHTML = `<h2>${a.title}</h2>
-        <div class="meta">Автор: <b>${a.author}</b> | ${a.date}</div>
+      div.innerHTML = `
+        <h2>${a.title}</h2>
+        <div class="meta">Автор: <b>${a.author}</b> | Опубліковано: ${a.time}</div>
+        ${a.image ? `<img src="${a.image}" alt="Зображення">` : ""}
         <p>${a.content}</p>
-        <button class="delete-btn" onclick="deleteArticle('${a.date}')">Видалити</button>`;
+        <button class="delete-btn" onclick="deleteArticle(${i})">Видалити</button>
+        <button class="edit-btn" onclick="editArticle(${i})">Редагувати</button>
+      `;
       container.appendChild(div);
     });
   }
 
-  // Видалення статті
-  function deleteArticle(date) {
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    // шукаємо по унікальному часу створення
-    articles = articles.filter(a => a.date !== date);
-    localStorage.setItem("articles", JSON.stringify(articles));
-    loadArticles();
-    loadMyArticles();
-  }
-
-  // Обробка логіну
-  document.getElementById("loginForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    let username = document.getElementById("username").value;
-    let password = document.getElementById("password").value;
-    login(username, password);
-  });
-
-  // Додавання статті
+  // Збереження статті
   document.getElementById("articleForm").addEventListener("submit", function(e) {
     e.preventDefault();
     let title = document.getElementById("title").value;
     let content = document.getElementById("content").value;
-    let author = localStorage.getItem("currentUser") || "Невідомий";
-    let date = new Date().toISOString(); // унікальний ключ (точний час)
+    let author = document.getElementById("author").value;
+    let file = document.getElementById("image").files[0];
+    let time = new Date().toLocaleString("uk-UA");
 
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    articles.unshift({title, content, author, date});
-    localStorage.setItem("articles", JSON.stringify(articles));
-
-    document.getElementById("articleForm").reset();
-    showPage("home");
+    if (file) {
+      let reader = new FileReader();
+      reader.onload = function(event) {
+        saveArticle(title, content, author, time, event.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      saveArticle(title, content, author, time, null);
+    }
   });
 
-  // Стартова сторінка
-  showPage("home");
+  // Збереження / редагування статті
+  function saveArticle(title, content, author, time, image) {
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+
+    if (editIndex !== null) {
+      articles[editIndex] = {title, content, author, time, image: image || articles[editIndex].image};
+      editIndex = null;
+      document.getElementById("formTitle").textContent = "Додати статтю";
+    } else {
+      articles.unshift({title, content, author, time, image});
+    }
+
+    localStorage.setItem("articles", JSON.stringify(articles));
+    document.getElementById("articleForm").reset();
+    showPage("home");
+    loadArticles();
+  }
+
+  // Видалення
+  function deleteArticle(index) {
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    if (confirm("Видалити цю статтю?")) {
+      articles.splice(index, 1);
+      localStorage.setItem("articles", JSON.stringify(articles));
+      loadArticles();
+    }
+  }
+
+  // Очистити всі
+  function clearArticles() {
+    if (confirm("Ви впевнені, що хочете видалити всі статті?")) {
+      localStorage.removeItem("articles");
+      loadArticles();
+      alert("Всі статті видалені!");
+    }
+  }
+
+  // Редагування
+  function editArticle(index) {
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    let a = articles[index];
+    document.getElementById("title").value = a.title;
+    document.getElementById("content").value = a.content;
+    document.getElementById("author").value = a.author;
+    editIndex = index;
+    document.getElementById("formTitle").textContent = "Редагувати статтю";
+    showPage("cabinet");
+  }
+
+  // Перший рендер
+  loadArticles();
 </script>
 
 </body>
