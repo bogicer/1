@@ -1,169 +1,193 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <title>Онлайн Газета</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {font-family: Arial, sans-serif; margin:0; background:#f9f9f9; color:#222;}
-    header {background:#2b2d42; color:#fff; padding:15px;}
-    header h1 {margin:0;}
-    nav a {color:#fff; margin-right:15px; text-decoration:none; font-weight:bold;}
-    nav a:hover {text-decoration:underline;}
-    main {padding:20px; max-width:900px; margin:auto;}
-    .article {background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.1);}
-    .article h2 {margin:0 0 10px;}
-    .meta {font-size:12px; color:#666; margin-bottom:10px;}
-    .article img {max-width:100%; border-radius:6px; margin:10px 0;}
-    #cabinet {display:none;}
-    form {display:grid; gap:10px; margin-top:10px;}
-    input, textarea {padding:10px; font-size:14px; border:1px solid #ccc; border-radius:6px;}
-    button {padding:10px; border:none; border-radius:6px; background:#2b2d42; color:#fff; cursor:pointer;}
-    button:hover {background:#3c3f60;}
-    .delete-btn {background:#d90429; margin-top:10px;}
-    .delete-btn:hover {background:#a3021f;}
-    .edit-btn {background:#f77f00; margin-left:10px;}
-    .edit-btn:hover {background:#c76500;}
-    .clear-btn {background:#ef233c; margin-top:15px;}
-    .clear-btn:hover {background:#a3021f;}
-  </style>
+<meta charset="UTF-8">
+<title>Онлайн Газета</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 20px; }
+  #cabinet, #login { display: none; margin-top: 20px; }
+  article { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+  img { max-width: 300px; border-radius: 5px; }
+  button { margin-right: 5px; }
+</style>
 </head>
 <body>
 
 <header>
   <h1>Онлайн Газета</h1>
   <nav>
-    <a href="#" onclick="showPage('home')">Головна</a>
-    <a href="#" onclick="showPage('cabinet')">Кабінет</a>
+    <button onclick="showPage('home')">Головна</button>
+    <button onclick="showPage('cabinet')">Кабінет</button>
   </nav>
 </header>
 
-<main>
-  <!-- Головна -->
-  <section id="home">
-    <h2>Останні статті</h2>
-    <div id="articles"></div>
-  </section>
+<section id="login">
+  <h2>Вхід до кабінету</h2>
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Логін" required>
+    <input type="password" id="password" placeholder="Пароль" required>
+    <button type="submit">Увійти</button>
+  </form>
+</section>
 
-  <!-- Кабінет -->
-  <section id="cabinet">
-    <h2 id="formTitle">Додати статтю</h2>
-    <form id="articleForm">
-      <input type="text" id="title" placeholder="Заголовок" required>
-      <textarea id="content" placeholder="Текст статті" rows="6" required></textarea>
-      <input type="text" id="author" placeholder="Автор" required>
-      <input type="file" id="image" accept="image/*">
-      <button type="submit">Опублікувати</button>
-    </form>
-    <button class="clear-btn" onclick="clearArticles()">Очистити всі статті</button>
-  </section>
-</main>
+<section id="home">
+  <h2>Статті</h2>
+  <div id="articles"></div>
+</section>
+
+<section id="cabinet">
+  <h2 id="formTitle">Додати статтю</h2>
+  <form id="articleForm">
+    <input type="text" id="title" placeholder="Заголовок" required><br><br>
+    <textarea id="content" placeholder="Текст статті" rows="6" required></textarea><br><br>
+    <input type="text" id="author" placeholder="Автор" required><br><br>
+    <input type="file" id="image" accept="image/*"><br><br>
+    <img id="preview" src="" style="display:none;"><br>
+    <button type="submit">Опублікувати</button>
+  </form>
+  <button onclick="clearArticles()" style="margin-top:15px; background:#d90429; color:white;">Очистити всі статті</button>
+</section>
 
 <script>
-  let editIndex = null;
+let editIndex = null;
+const users = [
+  {username: "admin", password: "1234"},
+  {username: "editor", password: "qwerty"}
+];
 
-  // Перемикання сторінок
-  function showPage(page) {
-    document.getElementById("home").style.display = (page === "home") ? "block" : "none";
-    document.getElementById("cabinet").style.display = (page === "cabinet") ? "block" : "none";
-  }
-  showPage("home");
-
-  // Завантаження статей
-  function loadArticles() {
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    let container = document.getElementById("articles");
-    container.innerHTML = "";
-    if (articles.length === 0) {
-      container.innerHTML = "<p>Статей ще немає. Додайте першу!</p>";
-      return;
-    }
-    articles.forEach((a, i) => {
-      let div = document.createElement("div");
-      div.className = "article";
-      div.innerHTML = `
-        <h2>${a.title}</h2>
-        <div class="meta">Автор: <b>${a.author}</b> | Опубліковано: ${a.time}</div>
-        ${a.image ? `<img src="${a.image}" alt="Зображення">` : ""}
-        <p>${a.content}</p>
-        <button class="delete-btn" onclick="deleteArticle(${i})">Видалити</button>
-        <button class="edit-btn" onclick="editArticle(${i})">Редагувати</button>
-      `;
-      container.appendChild(div);
-    });
-  }
-
-  // Збереження статті
-  document.getElementById("articleForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    let title = document.getElementById("title").value;
-    let content = document.getElementById("content").value;
-    let author = document.getElementById("author").value;
-    let file = document.getElementById("image").files[0];
-    let time = new Date().toLocaleString("uk-UA");
-
-    if (file) {
-      let reader = new FileReader();
-      reader.onload = function(event) {
-        saveArticle(title, content, author, time, event.target.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      saveArticle(title, content, author, time, null);
-    }
-  });
-
-  // Збереження / редагування статті
-  function saveArticle(title, content, author, time, image) {
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-
-    if (editIndex !== null) {
-      articles[editIndex] = {title, content, author, time, image: image || articles[editIndex].image};
-      editIndex = null;
-      document.getElementById("formTitle").textContent = "Додати статтю";
-    } else {
-      articles.unshift({title, content, author, time, image});
-    }
-
-    localStorage.setItem("articles", JSON.stringify(articles));
-    document.getElementById("articleForm").reset();
+document.getElementById("loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const user = users.find(u => u.username === username && u.password === password);
+  if(user){
+    localStorage.setItem("loggedUser", username);
+    alert("Вхід успішний!");
     showPage("home");
     loadArticles();
+  } else {
+    alert("Невірний логін або пароль");
   }
+});
 
-  // Видалення
-  function deleteArticle(index) {
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    if (confirm("Видалити цю статтю?")) {
-      articles.splice(index, 1);
-      localStorage.setItem("articles", JSON.stringify(articles));
-      loadArticles();
+function showPage(page) {
+  const loggedUser = localStorage.getItem("loggedUser");
+  if(page === "cabinet" && !loggedUser){
+    alert("Спочатку увійдіть до кабінету!");
+    page = "login";
+  }
+  document.getElementById("home").style.display = (page==="home")?"block":"none";
+  document.getElementById("cabinet").style.display = (page==="cabinet")?"block":"none";
+  document.getElementById("login").style.display = (page==="login")?"block":"none";
+}
+
+// Logout button
+if(!document.getElementById("logoutBtn")){
+  const btn = document.createElement("button");
+  btn.id = "logoutBtn";
+  btn.textContent = "Вийти";
+  btn.style.marginLeft = "15px";
+  btn.onclick = () => {
+    localStorage.removeItem("loggedUser");
+    alert("Ви вийшли з кабінету!");
+    showPage("login");
+  };
+  document.querySelector("header nav").appendChild(btn);
+}
+
+document.getElementById("image").addEventListener("change", function(){
+  const file = this.files[0];
+  const preview = document.getElementById("preview");
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      preview.src = e.target.result;
+      preview.style.display = "block";
     }
+    reader.readAsDataURL(file);
+  } else {
+    preview.src = "";
+    preview.style.display = "none";
   }
+});
 
-  // Очистити всі
-  function clearArticles() {
-    if (confirm("Ви впевнені, що хочете видалити всі статті?")) {
-      localStorage.removeItem("articles");
-      loadArticles();
-      alert("Всі статті видалені!");
-    }
+document.getElementById("articleForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const title = document.getElementById("title").value;
+  const content = document.getElementById("content").value;
+  const author = document.getElementById("author").value;
+  const time = new Date().toLocaleString();
+  const imgFile = document.getElementById("preview").src || "";
+  saveArticle(title, content, author, time, imgFile);
+});
+
+function saveArticle(title, content, author, time, image){
+  let articles = JSON.parse(localStorage.getItem("articles")) || [];
+  if(editIndex !== null){
+    articles[editIndex] = {title, content, author, time, image: image || articles[editIndex].image};
+    editIndex = null;
+    document.getElementById("formTitle").textContent = "Додати статтю";
+  } else {
+    articles.unshift({title, content, author, time, image});
   }
-
-  // Редагування
-  function editArticle(index) {
-    let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    let a = articles[index];
-    document.getElementById("title").value = a.title;
-    document.getElementById("content").value = a.content;
-    document.getElementById("author").value = a.author;
-    editIndex = index;
-    document.getElementById("formTitle").textContent = "Редагувати статтю";
-    showPage("cabinet");
-  }
-
-  // Перший рендер
+  localStorage.setItem("articles", JSON.stringify(articles));
+  document.getElementById("articleForm").reset();
+  document.getElementById("preview").style.display = "none";
+  showPage("home");
   loadArticles();
+}
+
+function loadArticles(){
+  const container = document.getElementById("articles");
+  container.innerHTML = "";
+  const articles = JSON.parse(localStorage.getItem("articles")) || [];
+  articles.forEach((art, i)=>{
+    const div = document.createElement("article");
+    div.innerHTML = `
+      <h3>${art.title}</h3>
+      <p><em>${art.author} - ${art.time}</em></p>
+      ${art.image?`<img src="${art.image}"><br>`:""}
+      <p>${art.content}</p>
+      <button onclick="editArticle(${i})">Редагувати</button>
+      <button onclick="deleteArticle(${i})" style="background:#d90429;color:white;">Видалити</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function editArticle(i){
+  const articles = JSON.parse(localStorage.getItem("articles")) || [];
+  const art = articles[i];
+  document.getElementById("title").value = art.title;
+  document.getElementById("content").value = art.content;
+  document.getElementById("author").value = art.author;
+  if(art.image){
+    const preview = document.getElementById("preview");
+    preview.src = art.image;
+    preview.style.display = "block";
+  }
+  editIndex = i;
+  showPage("cabinet");
+  document.getElementById("formTitle").textContent = "Редагувати статтю";
+}
+
+function deleteArticle(i){
+  let articles = JSON.parse(localStorage.getItem("articles")) || [];
+  if(confirm("Видалити цю статтю?")){
+    articles.splice(i,1);
+    localStorage.setItem("articles", JSON.stringify(articles));
+    loadArticles();
+  }
+}
+
+function clearArticles(){
+  if(confirm("Видалити всі статті?")){
+    localStorage.removeItem("articles");
+    loadArticles();
+  }
+}
+
+showPage("login");
 </script>
 
 </body>
