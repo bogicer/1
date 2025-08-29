@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Онлайн Газета</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {font-family: Arial, sans-serif; margin:0; background:#f9f9f9; color:#222;}
+    header {background:#2b2d42; color:#fff; padding:15px;}
+    header h1 {margin:0;}
+    nav a {color:#fff; margin-right:15px; text-decoration:none; font-weight:bold;}
+    nav a:hover {text-decoration:underline;}
+    main {padding:20px; max-width:900px; margin:auto;}
+    .article {background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.1);}
+    .article h2 {margin:0 0 10px;}
+    form {display:grid; gap:10px; margin-top:10px;}
+    input, textarea {padding:10px; font-size:14px; border:1px solid #ccc; border-radius:6px;}
+    button {padding:10px; border:none; border-radius:6px; background:#2b2d42; color:#fff; cursor:pointer;}
+    button:hover {background:#3c3f60;}
+    #cabinet, #login {display:none;}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Онлайн Газета</h1>
+  <nav>
+    <a href="#" onclick="showPage('home')">Головна</a>
+    <a href="#" onclick="showPage('cabinet')">Кабінет</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Головна сторінка -->
+  <section id="home">
+    <h2>Останні статті</h2>
+    <div id="articles"></div>
+  </section>
+
+  <!-- Форма входу -->
+  <section id="login">
+    <h2>Вхід у кабінет</h2>
+    <form id="loginForm">
+      <input type="text" id="username" placeholder="Логін" required>
+      <input type="password" id="password" placeholder="Пароль" required>
+      <button type="submit">Увійти</button>
+    </form>
+    <p id="loginError" style="color:red; display:none;">Невірний логін або пароль</p>
+  </section>
+
+  <!-- Кабінет -->
+  <section id="cabinet">
+    <h2>Додати статтю</h2>
+    <form id="articleForm">
+      <input type="text" id="title" placeholder="Заголовок" required>
+      <textarea id="content" placeholder="Текст статті" rows="6" required></textarea>
+      <button type="submit">Опублікувати</button>
+    </form>
+    <button onclick="logout()" style="margin-top:15px; background:#ef233c;">Вийти</button>
+  </section>
+</main>
+
+<script>
+  // "База" користувача
+  const USER = { login: "admin", pass: "1234" };
+
+  // Авторизація
+  function login(username, password) {
+    if (username === USER.login && password === USER.pass) {
+      localStorage.setItem("loggedIn", "true");
+      showPage("cabinet");
+    } else {
+      document.getElementById("loginError").style.display = "block";
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("loggedIn");
+    showPage("home");
+  }
+
+  // Перемикання сторінок
+  function showPage(page) {
+    document.getElementById("home").style.display = (page === "home") ? "block" : "none";
+    document.getElementById("login").style.display = (page === "login") ? "block" : "none";
+    document.getElementById("cabinet").style.display = (page === "cabinet") ? "block" : "none";
+
+    if (page === "cabinet") {
+      if (localStorage.getItem("loggedIn") === "true") {
+        document.getElementById("cabinet").style.display = "block";
+      } else {
+        showPage("login");
+      }
+    }
+
+    if (page === "home") {
+      loadArticles(); // 🔹 тепер при відкритті Головної підтягуємо статті
+    }
+  }
+
+  // Завантаження статей з localStorage
+  function loadArticles() {
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    let container = document.getElementById("articles");
+    container.innerHTML = "";
+    if (articles.length === 0) {
+      container.innerHTML = "<p>Немає статей. Додайте першу через кабінет.</p>";
+    }
+    articles.forEach((a) => {
+      let div = document.createElement("div");
+      div.className = "article";
+      div.innerHTML = `<h2>${a.title}</h2><p>${a.content}</p>`;
+      container.appendChild(div);
+    });
+  }
+
+  // Обробка логіну
+  document.getElementById("loginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+    login(username, password);
+  });
+
+  // Додавання статті
+  document.getElementById("articleForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    let title = document.getElementById("title").value;
+    let content = document.getElementById("content").value;
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    articles.unshift({title, content});
+    localStorage.setItem("articles", JSON.stringify(articles));
+    document.getElementById("articleForm").reset();
+    showPage("home");
+  });
+
+  // Стартова сторінка
+  showPage("home");
+</script>
+
+</body>
+</html>
