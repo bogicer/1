@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <title> Газета вісточка</title>
+  <title>Онлайн Газета</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {font-family: Arial, sans-serif; margin:0; background:#f9f9f9; color:#222;}
@@ -13,18 +13,20 @@
     main {padding:20px; max-width:900px; margin:auto;}
     .article {background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.1);}
     .article h2 {margin:0 0 10px;}
+    .meta {font-size:14px; color:#555; margin-bottom:10px;}
     form {display:grid; gap:10px; margin-top:10px;}
     input, textarea {padding:10px; font-size:14px; border:1px solid #ccc; border-radius:6px;}
     button {padding:10px; border:none; border-radius:6px; background:#2b2d42; color:#fff; cursor:pointer;}
     button:hover {background:#3c3f60;}
     #cabinet, #login {display:none;}
+    .delete-btn {background:#ef233c; margin-top:10px;}
+    .delete-btn:hover {background:#c1121f;}
   </style>
 </head>
 <body>
 
 <header>
-  <h1> Газета вісточка </h1>
-  <br>
+  <h1>Онлайн Газета</h1>
   <nav>
     <a href="#" onclick="showPage('home')">Головна</a>
     <a href="#" onclick="showPage('cabinet')">Кабінет</a>
@@ -57,19 +59,23 @@
       <textarea id="content" placeholder="Текст статті" rows="6" required></textarea>
       <button type="submit">Опублікувати</button>
     </form>
+
+    <h2 style="margin-top:30px;">Мої статті</h2>
+    <div id="myArticles"></div>
+
     <button onclick="logout()" style="margin-top:15px; background:#ef233c;">Вийти</button>
   </section>
 </main>
 
 <script>
   // "База" користувача
-  const USER = { login: "admin", pass: "qwerty1234" };
-  const USER = { login: "bogdan_liskevich", pass: "natafik" };
+  const USER = { login: "admin", pass: "1234" };
 
   // Авторизація
   function login(username, password) {
     if (username === USER.login && password === USER.pass) {
       localStorage.setItem("loggedIn", "true");
+      localStorage.setItem("currentUser", username);
       showPage("cabinet");
     } else {
       document.getElementById("loginError").style.display = "block";
@@ -78,6 +84,7 @@
 
   function logout() {
     localStorage.removeItem("loggedIn");
+    localStorage.removeItem("currentUser");
     showPage("home");
   }
 
@@ -90,17 +97,18 @@
     if (page === "cabinet") {
       if (localStorage.getItem("loggedIn") === "true") {
         document.getElementById("cabinet").style.display = "block";
+        loadMyArticles(); // показати статті в кабінеті
       } else {
         showPage("login");
       }
     }
 
     if (page === "home") {
-      loadArticles(); // 🔹 тепер при відкритті Головної підтягуємо статті
+      loadArticles(); // при відкритті головної підтягувати статті
     }
   }
 
-  // Завантаження статей з localStorage
+  // Завантаження статей з localStorage (головна)
   function loadArticles() {
     let articles = JSON.parse(localStorage.getItem("articles")) || [];
     let container = document.getElementById("articles");
@@ -111,9 +119,44 @@
     articles.forEach((a) => {
       let div = document.createElement("div");
       div.className = "article";
-      div.innerHTML = `<h2>${a.title}</h2><p>${a.content}</p>`;
+      div.innerHTML = `<h2>${a.title}</h2>
+        <div class="meta">Автор: <b>${a.author}</b> | ${a.date}</div>
+        <p>${a.content}</p>`;
       container.appendChild(div);
     });
+  }
+
+  // Завантаження статей у кабінеті
+  function loadMyArticles() {
+    let currentUser = localStorage.getItem("currentUser");
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    let container = document.getElementById("myArticles");
+    container.innerHTML = "";
+
+    let myArticles = articles.filter(a => a.author === currentUser);
+    if (myArticles.length === 0) {
+      container.innerHTML = "<p>У вас немає статей.</p>";
+    }
+
+    myArticles.forEach((a, index) => {
+      let div = document.createElement("div");
+      div.className = "article";
+      div.innerHTML = `<h2>${a.title}</h2>
+        <div class="meta">Автор: <b>${a.author}</b> | ${a.date}</div>
+        <p>${a.content}</p>
+        <button class="delete-btn" onclick="deleteArticle('${a.date}')">Видалити</button>`;
+      container.appendChild(div);
+    });
+  }
+
+  // Видалення статті
+  function deleteArticle(date) {
+    let articles = JSON.parse(localStorage.getItem("articles")) || [];
+    // шукаємо по унікальному часу створення
+    articles = articles.filter(a => a.date !== date);
+    localStorage.setItem("articles", JSON.stringify(articles));
+    loadArticles();
+    loadMyArticles();
   }
 
   // Обробка логіну
@@ -129,9 +172,13 @@
     e.preventDefault();
     let title = document.getElementById("title").value;
     let content = document.getElementById("content").value;
+    let author = localStorage.getItem("currentUser") || "Невідомий";
+    let date = new Date().toISOString(); // унікальний ключ (точний час)
+
     let articles = JSON.parse(localStorage.getItem("articles")) || [];
-    articles.unshift({title, content});
+    articles.unshift({title, content, author, date});
     localStorage.setItem("articles", JSON.stringify(articles));
+
     document.getElementById("articleForm").reset();
     showPage("home");
   });
