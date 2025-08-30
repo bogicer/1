@@ -1,194 +1,189 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<title>Онлайн Газета</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 20px; }
-  #cabinet, #login { display: none; margin-top: 20px; }
-  article { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-  img { max-width: 300px; border-radius: 5px; }
-  button { margin-right: 5px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Онлайн Газета</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin:0; }
+    header { background:#222; color:#fff; padding:15px; text-align:center; }
+    nav { background:#444; color:#fff; padding:10px; text-align:center; }
+    nav button { margin: 0 5px; padding: 8px 12px; border:none; border-radius:5px; cursor:pointer; }
+    nav button:hover { background:#666; color:#fff; }
+    .container { max-width: 800px; margin:20px auto; background:#fff; padding:20px; border-radius:10px; }
+    article { border-bottom:1px solid #ddd; padding:15px 0; }
+    article img { max-width:100%; border-radius:10px; }
+    .meta { font-size:12px; color:gray; }
+    .hidden { display:none; }
+  </style>
 </head>
 <body>
-
 <header>
   <h1>Онлайн Газета</h1>
-  <nav>
-    <button onclick="showPage('home')">Головна</button>
-    <button onclick="showPage('cabinet')">Кабінет</button>
-  </nav>
 </header>
+<nav>
+  <button onclick="showPage('home')">🏠 Головна</button>
+  <button onclick="showPage('login')">🔑 Кабінет</button>
+</nav>
 
-<section id="login">
-  <h2>Вхід до кабінету</h2>
-  <form id="loginForm">
-    <input type="text" id="username" placeholder="Логін" required>
-    <input type="password" id="password" placeholder="Пароль" required>
-    <button type="submit">Увійти</button>
-  </form>
-</section>
+<div class="container">
 
-<section id="home">
-  <h2>Статті</h2>
-  <div id="articles"></div>
-</section>
+  <!-- Головна -->
+  <section id="home">
+    <h2>Статті</h2>
+    <div id="articles"></div>
+  </section>
 
-<section id="cabinet">
-  <h2 id="formTitle">Додати статтю</h2>
-  <form id="articleForm">
-    <input type="text" id="title" placeholder="Заголовок" required><br><br>
-    <textarea id="content" placeholder="Текст статті" rows="6" required></textarea><br><br>
-    <input type="text" id="author" placeholder="Автор" required><br><br>
-    <input type="file" id="image" accept="image/*"><br><br>
-    <img id="preview" src="" style="display:none;"><br>
-    <button type="submit">Опублікувати</button>
-  </form>
-  <button onclick="clearArticles()" style="margin-top:15px; background:#d90429; color:white;">Очистити всі статті</button>
-</section>
+  <!-- Логін -->
+  <section id="login" class="hidden">
+    <h2>Вхід</h2>
+    <input type="text" id="username" placeholder="Користувач"><br><br>
+    <input type="password" id="password" placeholder="Пароль"><br><br>
+    <button onclick="login()">Увійти</button>
+  </section>
+
+  <!-- Кабінет -->
+  <section id="cabinet" class="hidden">
+    <h2>Кабінет</h2>
+    <form id="articleForm">
+      <input type="text" id="title" placeholder="Заголовок" required><br><br>
+      <textarea id="content" placeholder="Текст статті" rows="5" required></textarea><br><br>
+      <input type="text" id="author" placeholder="Автор" required><br><br>
+      <input type="file" id="image" accept="image/*"><br>
+      <img id="preview" class="hidden"><br><br>
+      <button type="submit">Опублікувати</button>
+    </form>
+    <h3>Ваші статті</h3>
+    <div id="myArticles"></div>
+  </section>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
 
 <script>
-let editIndex = null;
-const users = [
-  {username: "admin", password: "1234"},
-  {username: "editor", password: "qwerty"}
-];
+  // 🔹 ТВОЇ ДАНІ FIREBASE
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-document.getElementById("loginForm").addEventListener("submit", function(e){
-  e.preventDefault();
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-  const user = users.find(u => u.username === username && u.password === password);
-  if(user){
-    localStorage.setItem("loggedUser", username);
-    alert("Вхід успішний!");
-    showPage("home");
-    loadArticles();
-  } else {
-    alert("Невірний логін або пароль");
-  }
-});
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCP0ris9jVmQG4ffRWzDccmuDU8u02640E",
+  authDomain: "vistochka-1.firebaseapp.com",
+  databaseURL: "https://vistochka-1-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "vistochka-1",
+  storageBucket: "vistochka-1.firebasestorage.app",
+  messagingSenderId: "275110723807",
+  appId: "1:275110723807:web:65c7248f3abb716e06696a",
+  measurementId: "G-RC2TQW819P"
+};
 
-function showPage(page) {
-  const loggedUser = localStorage.getItem("loggedUser");
-  if(page === "cabinet" && !loggedUser){
-    alert("Спочатку увійдіть до кабінету!");
-    page = "login";
-  }
-  document.getElementById("home").style.display = (page==="home")?"block":"none";
-  document.getElementById("cabinet").style.display = (page==="cabinet")?"block":"none";
-  document.getElementById("login").style.display = (page==="login")?"block":"none";
-}
-
-// Logout button
-if(!document.getElementById("logoutBtn")){
-  const btn = document.createElement("button");
-  btn.id = "logoutBtn";
-  btn.textContent = "Вийти";
-  btn.style.marginLeft = "15px";
-  btn.onclick = () => {
-    localStorage.removeItem("loggedUser");
-    alert("Ви вийшли з кабінету!");
-    showPage("login");
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
   };
-  document.querySelector("header nav").appendChild(btn);
-}
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-document.getElementById("image").addEventListener("change", function(){
-  const file = this.files[0];
-  const preview = document.getElementById("preview");
-  if(file){
-    const reader = new FileReader();
-    reader.onload = function(e){
-      preview.src = e.target.result;
-      preview.style.display = "block";
+  // 🔹 Перемикання сторінок
+  function showPage(page) {
+    document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
+    document.getElementById(page).classList.remove("hidden");
+    if (page === "home") loadArticles();
+    if (page === "cabinet") loadMyArticles();
+  }
+
+  // 🔹 Авторизація (дуже проста, можна доробити Firebase Auth)
+  let loggedIn = false;
+  function login() {
+    const u = document.getElementById("username").value;
+    const p = document.getElementById("password").value;
+    if (u==="admin" && p==="1234") {
+      loggedIn = true;
+      showPage("cabinet");
+    } else {
+      alert("Невірний логін або пароль!");
     }
-    reader.readAsDataURL(file);
-  } else {
-    preview.src = "";
-    preview.style.display = "none";
   }
-});
 
-document.getElementById("articleForm").addEventListener("submit", function(e){
-  e.preventDefault();
-  const title = document.getElementById("title").value;
-  const content = document.getElementById("content").value;
-  const author = document.getElementById("author").value;
-  const time = new Date().toLocaleString();
-  const imgFile = document.getElementById("preview").src || "";
-  saveArticle(title, content, author, time, imgFile);
-});
-
-function saveArticle(title, content, author, time, image){
-  let articles = JSON.parse(localStorage.getItem("articles")) || [];
-  if(editIndex !== null){
-    articles[editIndex] = {title, content, author, time, image: image || articles[editIndex].image};
-    editIndex = null;
-    document.getElementById("formTitle").textContent = "Додати статтю";
-  } else {
-    articles.unshift({title, content, author, time, image});
-  }
-  localStorage.setItem("articles", JSON.stringify(articles));
-  document.getElementById("articleForm").reset();
-  document.getElementById("preview").style.display = "none";
-  showPage("home");
-  loadArticles();
-}
-
-function loadArticles(){
-  const container = document.getElementById("articles");
-  container.innerHTML = "";
-  const articles = JSON.parse(localStorage.getItem("articles")) || [];
-  articles.forEach((art, i)=>{
-    const div = document.createElement("article");
-    div.innerHTML = `
-      <h3>${art.title}</h3>
-      <p><em>${art.author} - ${art.time}</em></p>
-      ${art.image?`<img src="${art.image}"><br>`:""}
-      <p>${art.content}</p>
-      <button onclick="editArticle(${i})">Редагувати</button>
-      <button onclick="deleteArticle(${i})" style="background:#d90429;color:white;">Видалити</button>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function editArticle(i){
-  const articles = JSON.parse(localStorage.getItem("articles")) || [];
-  const art = articles[i];
-  document.getElementById("title").value = art.title;
-  document.getElementById("content").value = art.content;
-  document.getElementById("author").value = art.author;
-  if(art.image){
+  // 🔹 Попередній перегляд фото
+  document.getElementById("image").addEventListener("change", function(){
+    const file = this.files[0];
     const preview = document.getElementById("preview");
-    preview.src = art.image;
-    preview.style.display = "block";
-  }
-  editIndex = i;
-  showPage("cabinet");
-  document.getElementById("formTitle").textContent = "Редагувати статтю";
-}
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => { preview.src = e.target.result; preview.classList.remove("hidden"); };
+      reader.readAsDataURL(file);
+    } else {
+      preview.src = "";
+      preview.classList.add("hidden");
+    }
+  });
 
-function deleteArticle(i){
-  let articles = JSON.parse(localStorage.getItem("articles")) || [];
-  if(confirm("Видалити цю статтю?")){
-    articles.splice(i,1);
-    localStorage.setItem("articles", JSON.stringify(articles));
+  // 🔹 Додавання статті у Firebase
+  document.getElementById("articleForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const title = document.getElementById("title").value;
+    const content = document.getElementById("content").value;
+    const author = document.getElementById("author").value;
+    const time = new Date().toLocaleString();
+    const img = document.getElementById("preview").src || "";
+
+    await db.collection("articles").add({ title, content, author, time, image: img });
+
+    alert("✅ Стаття додана!");
+    document.getElementById("articleForm").reset();
+    document.getElementById("preview").classList.add("hidden");
     loadArticles();
-  }
-}
+    loadMyArticles();
+  });
 
-function clearArticles(){
-  if(confirm("Видалити всі статті?")){
-    localStorage.removeItem("articles");
-    loadArticles();
+  // 🔹 Завантаження всіх статей
+  async function loadArticles() {
+    const container = document.getElementById("articles");
+    container.innerHTML = "";
+    const snapshot = await db.collection("articles").orderBy("time","desc").get();
+    snapshot.forEach(doc => {
+      const art = doc.data();
+      container.innerHTML += `
+        <article>
+          <h3>${art.title}</h3>
+          ${art.image ? `<img src="${art.image}">` : ""}
+          <p>${art.content}</p>
+          <div class="meta">✍ ${art.author} | 🕒 ${art.time}</div>
+        </article>
+      `;
+    });
   }
-}
 
-showPage("login");
+  // 🔹 Завантаження статей у кабінеті
+  async function loadMyArticles() {
+    const container = document.getElementById("myArticles");
+    container.innerHTML = "";
+    const snapshot = await db.collection("articles").get();
+    snapshot.forEach(doc => {
+      const art = doc.data();
+      container.innerHTML += `
+        <article>
+          <h4>${art.title}</h4>
+          <button onclick="deleteArticle('${doc.id}')">❌ Видалити</button>
+        </article>
+      `;
+    });
+  }
+
+  // 🔹 Видалення статті
+  async function deleteArticle(id) {
+    if (confirm("Видалити статтю?")) {
+      await db.collection("articles").doc(id).delete();
+      loadArticles();
+      loadMyArticles();
+    }
+  }
 </script>
-
 </body>
 </html>
